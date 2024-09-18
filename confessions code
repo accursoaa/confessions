@@ -1,42 +1,341 @@
-mcgill-confessions/
+confessions-app/
 ├── src/
 │   ├── main/
-│   │   ├── java/com/example/mcgillconfessions/
-│   │   │   ├── McgillConfessionsApplication.java  # Main application file
-│   │   │   ├── ConfessionController.java          # RestController for handling API endpoints
-│   │   │   ├── ConfessionService.java             # Service for managing business logic
-│   │   │   ├── Confession.java                    # Confession model
-│   │   │   ├── Comment.java                       # Comment model
-│   │   │   ├── Report.java                        # Report model
+│   │   ├── java/com/example/confessions/
+│   │   │   ├── McGillConfessionsApplication.java  # Main application file
+│   │   │   ├── ConfessionController.java          # REST API endpoints
+│   │   │   ├── ConfessionService.java             # Service Layer
+│   │   │   ├── Confession.java                    # Confession Model
+│   │   │   ├── Comment.java                       # Comment Model
+│   │   │   ├── Report.java                        # Report Model
 │   └── resources/
-│       ├── application.properties                 # Application configuration
-├── pom.xml                                         # Maven configuration file
-# Server configuration
-server.port=8080
+│       ├── application.properties                 # Spring Boot Configuration
+├── pom.xml                                         # Maven Build File
+package com.example.confessions;
 
-# Database configuration (using H2 in-memory database for simplicity)
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class McGillConfessionsApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(McGillConfessionsApplication.class, args);
+    }
+}
+package com.example.confessions;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api")
+public class ConfessionController {
+
+    @Autowired
+    private ConfessionService confessionService;
+
+    @PostMapping("/signup")
+    public Map<String, String> signUp(@RequestBody Map<String, String> body) {
+        String userId = UUID.randomUUID().toString();
+        return Collections.singletonMap("userId", userId);
+    }
+
+    @PostMapping("/confession")
+    public Map<String, String> postConfession(@RequestBody Confession confession) {
+        confessionService.addConfession(confession);
+        return Collections.singletonMap("message", "Confession posted");
+    }
+
+    @GetMapping("/confessions/{category}")
+    public List<Confession> getConfessionsByCategory(@PathVariable String category) {
+        return confessionService.getConfessionsByCategory(category);
+    }
+
+    @PostMapping("/confession/{confessionId}/comment")
+    public Map<String, String> postComment(@PathVariable String confessionId, @RequestBody Comment comment) {
+        confessionService.addComment(confessionId, comment);
+        return Collections.singletonMap("message", "Comment added");
+    }
+
+    @PostMapping("/confession/{confessionId}/report")
+    public Map<String, String> reportConfession(@PathVariable String confessionId, @RequestBody Map<String, String> body) {
+        confessionService.reportConfession(confessionId, body.get("reason"));
+        return Collections.singletonMap("message", "Report submitted");
+    }
+
+    @GetMapping("/admin/reports")
+    public List<Report> getReports() {
+        return confessionService.getReports();
+    }
+
+    @DeleteMapping("/admin/confession/{confessionId}")
+    public Map<String, String> deleteConfession(@PathVariable String confessionId) {
+        confessionService.deleteConfession(confessionId);
+        return Collections.singletonMap("message", "Confession deleted");
+    }
+}
+package com.example.confessions;
+
+import org.springframework.stereotype.Service;
+import java.util.*;
+
+@Service
+public class ConfessionService {
+
+    private Map<String, Confession> confessionStore = new HashMap<>();
+    private List<Report> reports = new ArrayList<>();
+
+    public void addConfession(Confession confession) {
+        confessionStore.put(confession.getId(), confession);
+    }
+
+    public List<Confession> getConfessionsByCategory(String category) {
+        List<Confession> filteredConfessions = new ArrayList<>();
+        for (Confession confession : confessionStore.values()) {
+            if (confession.getCategory().equalsIgnoreCase(category)) {
+                filteredConfessions.add(confession);
+            }
+        }
+        return filteredConfessions;
+    }
+
+    public void addComment(String confessionId, Comment comment) {
+        Confession confession = confessionStore.get(confessionId);
+        if (confession != null) {
+            confession.getComments().add(comment);
+        }
+    }
+
+    public void reportConfession(String confessionId, String reason) {
+        Report report = new Report(UUID.randomUUID().toString(), confessionId, reason);
+        reports.add(report);
+    }
+
+    public List<Report> getReports() {
+        return reports;
+    }
+
+    public void deleteConfession(String confessionId) {
+        confessionStore.remove(confessionId);
+    }
+}
+``
+package com.example.confessions;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Confession {
+
+    private String id = UUID.randomUUID().toString();
+    private String userId;
+    private String text;
+    private String category;
+    private List<Comment> comments = new ArrayList<>();
+
+    public String getId() {
+        return id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public List<Comment> getComments() {
+        return comments;
+    }
+}
+package com.example.confessions;
+
+import org.springframework.stereotype.Service;
+import java.util.*;
+
+@Service
+public class ConfessionService {
+
+    private Map<String, Confession> confessionStore = new HashMap<>();
+    private List<Report> reports = new ArrayList<>();
+
+    public void addConfession(Confession confession) {
+        confessionStore.put(confession.getId(), confession);
+    }
+
+    public List<Confession> getConfessionsByCategory(String category) {
+        List<Confession> filteredConfessions = new ArrayList<>();
+        for (Confession confession : confessionStore.values()) {
+            if (confession.getCategory().equalsIgnoreCase(category)) {
+                filteredConfessions.add(confession);
+            }
+        }
+        return filteredConfessions;
+    }
+
+    public void addComment(String confessionId, Comment comment) {
+        Confession confession = confessionStore.get(confessionId);
+        if (confession != null) {
+            confession.getComments().add(comment);
+        }
+    }
+
+    public void reportConfession(String confessionId, String reason) {
+        Report report = new Report(UUID.randomUUID().toString(), confessionId, reason);
+        reports.add(report);
+    }
+
+    public List<Report> getReports() {
+        return reports;
+    }
+
+    public void deleteConfession(String confessionId) {
+        confessionStore.remove(confessionId);
+    }
+}
+package com.example.confessions;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class Confession {
+
+    private String id = UUID.randomUUID().toString();
+    private String userId;
+    private String text;
+    private String category;
+    private List<Comment> comments = new ArrayList<>();
+
+    public String getId() {
+        return id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public List<Comment> getComments() {
+        return comments;
+    }
+}
+package com.example.confessions;
+
+public class Comment {
+
+    private String id = UUID.randomUUID().toString();
+    private String userId;
+    private String text;
+
+    public String getId() {
+        return id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+}
+package com.example.confessions;
+
+public class Report {
+
+    private String id;
+    private String confessionId;
+    private String reason;
+
+    public Report(String id, String confessionId, String reason) {
+        this.id = id;
+        this.confessionId = confessionId;
+        this.reason = reason;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getConfessionId() {
+        return confessionId;
+    }
+
+    public void setConfessionId(String confessionId) {
+        this.confessionId = confessionId;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+}
 spring.datasource.url=jdbc:h2:mem:mcgillconfessionsdb;DB_CLOSE_ON_EXIT=FALSE
 spring.datasource.driverClassName=org.h2.Driver
 spring.datasource.username=sa
 spring.datasource.password=password
 spring.h2.console.enabled=true
-
-# JPA / Hibernate settings
 spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
 spring.jpa.hibernate.ddl-auto=update
-# PostgreSQL Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/mcgillconfessions
-spring.datasource.username=your-username
-spring.datasource.password=your-password
+spring.datasource.url=jdbc:postgresql://<hostname>:5432/<database_name>
+spring.datasource.username=<username>
+spring.datasource.password=<password>
 spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>mcgill-confessions</artifactId>
+    <artifactId>confessions-app</artifactId>
     <version>1.0.0</version>
 
     <parent>
@@ -47,7 +346,6 @@ spring.jpa.show-sql=true
     </parent>
 
     <dependencies>
-        <!-- Spring Boot dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -57,95 +355,14 @@ spring.jpa.show-sql=true
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-
-        <!-- Database driver -->
-        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
-        
-        <!-- For PostgreSQL (if needed) -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-
-        <!-- Lombok for simplified model code -->
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Socket.io or WebSocket support -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
-
-</project>
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.web.util.HtmlUtils;
-
-@RestController
-@RequestMapping("/api")
-public class ConfessionController {
-
-    // WebSocket endpoint for real-time confession broadcast
-    @MessageMapping("/newConfession")
-    @SendTo("/topic/confessions")
-    public Confession confess(Confession confession) {
-        confession.setText(HtmlUtils.htmlEscape(confession.getText()));  // Escape HTML input for security
-        return confession;
-    }
-
-    // WebSocket endpoint for real-time comment broadcast
-    @MessageMapping("/newComment")
-    @SendTo("/topic/comments")
-    public Comment comment(Comment comment) {
-        comment.setText(HtmlUtils.htmlEscape(comment.getText()));  // Escape HTML input for security
-        return comment;
-    }
-}
-import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.simp.config.MessageBrokerRegistry;
-import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
-import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
-import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
-
-@Configuration
-@EnableWebSocketMessageBroker
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-
-    @Override
-    public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic");
-        config.setApplicationDestinationPrefixes("/app");
-    }
-
-    @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/websocket-confession").withSockJS();
-    }
-}
+            <groupId>org.projectlombok
